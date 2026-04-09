@@ -22,11 +22,14 @@ public class TransactionService {
     private final UserRepository userRepository;
     private final Logger log = LoggerFactory.getLogger(TransactionService.class);
     private final TransactionRecordRepository transactionRecordRepository;
+    private final IncentiveService incentiveService;
 
     public TransactionService(UserRepository userRepository,
-                              TransactionRecordRepository transactionRecordRepository) {
+                              TransactionRecordRepository transactionRecordRepository,
+                            IncentiveService incentiveService) {
         this.userRepository = userRepository;
         this.transactionRecordRepository = transactionRecordRepository;
+        this.incentiveService = incentiveService;
     }
 
     @Transactional
@@ -50,16 +53,18 @@ public class TransactionService {
             recipient.getBalance(),
             transaction.getAmount());
 
+        
+        float incentive = incentiveService.getIncentive(transaction);
 
         // Adjust balances
         sender.setBalance(sender.getBalance() - transaction.getAmount());
-        recipient.setBalance(recipient.getBalance() + transaction.getAmount());
+        recipient.setBalance(recipient.getBalance() + transaction.getAmount() + incentive);
 
         userRepository.save(sender);
         userRepository.save(recipient);
 
         // Record the transaction
-        TransactionRecord record = new TransactionRecord(sender, recipient, transaction.getAmount());
+        TransactionRecord record = new TransactionRecord(sender, recipient, transaction.getAmount(), incentive);
         transactionRecordRepository.save(record);
 
         log.info("{} -> balance check: {} , {} -> balance check: {}", 
